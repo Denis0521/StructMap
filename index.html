@@ -1,0 +1,123 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#2b5d8a"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png">
+<title>結構圖工具</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:system-ui,"Noto Sans TC",sans-serif;background:#f4f1ea;overflow:hidden}
+#bar{display:flex;gap:6px;padding:6px;background:#2b5d8a;overflow-x:auto;white-space:nowrap;position:fixed;top:0;left:0;right:0;z-index:5}
+#bar button{border:0;border-radius:8px;padding:9px 12px;font-size:15px;background:#fff;color:#1d3f5e;flex:none}
+#bar button.on{background:#ffd54a}#bar button:disabled{opacity:.4}
+#cv{position:fixed;top:54px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 54px);touch-action:none;background-image:radial-gradient(#cfc8b8 1px,transparent 1px);background-size:20px 20px}
+.nd rect{fill:#fff;stroke:#222;stroke-width:2}.nd.sel rect{stroke:#d9480f;stroke-width:3.5}.nd.from rect{fill:#fff3bf}
+.nd text{font-size:18px;text-anchor:middle;dominant-baseline:central;fill:#111;pointer-events:none;user-select:none}
+.eg{fill:none;stroke:#222;stroke-width:2}.eg.sel{stroke:#d9480f;stroke-width:3.5}.hit{fill:none;stroke:transparent;stroke-width:16}
+#hint{position:fixed;bottom:8px;left:8px;right:8px;text-align:center;font-size:13px;color:#555;pointer-events:none}
+dialog{border:0;border-radius:12px;padding:16px;width:min(92vw,420px)}dialog::backdrop{background:#0006}
+textarea{width:100%;height:110px;font-size:18px;padding:8px}dialog button{padding:9px 14px;border-radius:8px;border:1px solid #888;background:#fff;font-size:15px;margin:4px 4px 0 0}
+.row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #ddd;gap:6px}
+#pb{display:none}
+@media print{html,body{overflow:visible;background:#fff}body>*:not(#pb){display:none!important}#pb{display:block}#pb svg{width:100%;height:auto;max-height:190mm}}
+</style></head><body>
+<div id="bar">
+<button id="bAdd">＋方框</button><button id="bLink">連線</button><button id="bEdit">改文字</button><button id="bDir">直/橫</button><button id="bCol">顏色</button><button id="bArw">箭頭</button><button id="bDel">刪除</button>
+<button id="bZi">放大</button><button id="bZo">縮小</button><button id="bFit">置中</button><button id="bFile">檔案</button><button id="bPdf">匯出PDF</button><button id="bPng">匯出PNG</button>
+</div>
+<svg id="cv"><g id="w"></g></svg>
+<div id="hint"></div>
+<dialog id="dT"><b>方框文字</b>（可換行）<textarea id="ta"></textarea><div><button id="tOk">確定</button><button id="tNo">取消</button></div></dialog>
+<dialog id="dF"><b id="fn"></b><div style="margin:8px 0"><button id="fNew">新建</button><button id="fSave">儲存</button><button id="fAs">另存新檔</button><button id="fExp">匯出檔案</button><button id="fImp">匯入檔案</button></div><div id="fl"></div><button id="fClose">關閉</button></dialog>
+<dialog id="dC"><b>選擇顏色</b><div id="sw" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"></div><button id="cNo">取消</button></dialog>
+<input type="file" id="fi" accept=".json,application/json" hidden><div id="pb"></div>
+<script>
+const $=id=>document.getElementById(id),cv=$('cv'),W=$('w');
+let S={name:'未命名',nodes:[],edges:[]},view={x:40,y:20,k:1},sel=null,mode='sel',linkFrom=null;
+const uid=()=>Math.random().toString(36).slice(2,9),esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const N=id=>S.nodes.find(n=>n.id==id);
+function sample(){const m=(t,x,y,w=140,h=60,v=0)=>({id:uid(),text:t,x,y,w,h,v});
+const c=m('紙怎麼來？',260,140),a=m('跟紙玩遊戲',260,240),b=m('紙有哪些特性',260,340);
+const l=m('用紙玩遊戲',80,230,50,110,1),r=m('紙有哪幾種',440,230,50,110,1);
+S={name:'範例',nodes:[c,a,b,l,r],edges:[{f:c.id,t:a.id},{f:a.id,t:b.id},{f:a.id,t:l.id},{f:a.id,t:r.id}]}}
+function load(){try{const d=JSON.parse(localStorage.getItem('sd_cur'));if(d&&d.nodes){S=d;return}}catch(e){}sample()}
+function save(){localStorage.setItem('sd_cur',JSON.stringify(S))}
+function route(a,b){const ax=a.x+a.w/2,ay=a.y+a.h/2,bx=b.x+b.w/2,by=b.y+b.h/2,
+dx=Math.abs(bx-ax)-(a.w+b.w)/2,dy=Math.abs(by-ay)-(a.h+b.h)/2;
+if(dx>=dy){const s=bx>ax?1:-1,x1=ax+s*a.w/2,x2=bx-s*b.w/2,m=(x1+x2)/2;return{d:`M${x1} ${ay}H${m}V${by}H${x2}`,x:x2,y:by,u:s,v:0}}
+const s=by>ay?1:-1,y1=ay+s*a.h/2,y2=by-s*b.h/2,m=(y1+y2)/2;return{d:`M${ax} ${y1}V${m}H${bx}V${y2}`,x:bx,y:y2,u:0,v:s}}
+function arrow(r,c){const bx=r.x-r.u*14,by=r.y-r.v*14;return`<polygon points="${r.x},${r.y} ${bx+r.v*7},${by-r.u*7} ${bx-r.v*7},${by+r.u*7}" style="fill:${c}"/>`}
+function txt(n){const L=n.text.split('\n'),lh=22,cx=n.x+n.w/2,cy=n.y+n.h/2;let o='';
+if(!n.v)L.forEach((s,i)=>o+=`<text x="${cx}" y="${cy+(i-(L.length-1)/2)*lh}">${esc(s)}</text>`);
+else L.forEach((s,i)=>{const C=[...s],x=cx+((L.length-1)/2-i)*lh;C.forEach((ch,j)=>o+=`<text x="${x}" y="${cy+(j-(C.length-1)/2)*lh}">${esc(ch)}</text>`)});return o}
+function inner(edit){let o='';
+S.edges.forEach((e,i)=>{const a=N(e.f),b=N(e.t);if(!a||!b)return;const r=route(a,b),c=e.c||'#222',sl=edit&&sel&&sel.t=='e'&&sel.i==i;
+o+=`<path class="eg${sl?' sel':''}" ${sl?'':`style="stroke:${c}"`} d="${r.d}"/>`+(e.a?arrow(r,sl?'#d9480f':c):'')+(edit?`<path class="hit" data-e="${i}" d="${r.d}"/>`:'')});
+S.nodes.forEach(n=>{const s=edit&&sel&&sel.t=='n'&&sel.id==n.id;
+o+=`<g class="nd${s?' sel':''}${edit&&linkFrom==n.id?' from':''}" data-n="${n.id}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}"${n.c?` style="fill:${n.c}"`:''}/>${txt(n)}`+
+(s?`<circle data-h="${n.id}" cx="${n.x+n.w}" cy="${n.y+n.h}" r="11" fill="#d9480f"/>`:'')+`</g>`});return o}
+function render(){W.setAttribute('transform',`translate(${view.x} ${view.y}) scale(${view.k})`);W.innerHTML=inner(true);
+$('bLink').classList.toggle('on',mode=='link');
+const hasN=sel&&sel.t=='n';$('bEdit').disabled=$('bDir').disabled=!hasN;$('bDel').disabled=$('bCol').disabled=!sel;$('bArw').disabled=!(sel&&sel.t=='e');
+$('hint').textContent=mode=='link'?(linkFrom?'再點選要連到的方框':'點選起點方框（箭頭會指向第二個點選的方框）'):'拖曳方框移動；選取後拖紅點縮放；拖空白處平移'}
+function pt(ev){const r=cv.getBoundingClientRect();return{x:(ev.clientX-r.left-view.x)/view.k,y:(ev.clientY-r.top-view.y)/view.k}}
+let drag=null;
+cv.addEventListener('pointerdown',ev=>{const p=pt(ev),t=ev.target.closest('[data-h],[data-n],[data-e]');cv.setPointerCapture(ev.pointerId);
+if(t&&t.dataset.h){const n=N(t.dataset.h);drag={k:'rs',n,ox:p.x-n.w,oy:p.y-n.h}}
+else if(t&&t.dataset.n){const n=N(t.dataset.n);
+if(mode=='link'){if(!linkFrom)linkFrom=n.id;else if(linkFrom!=n.id){if(!S.edges.some(e=>(e.f==linkFrom&&e.t==n.id)||(e.f==n.id&&e.t==linkFrom)))S.edges.push({f:linkFrom,t:n.id});linkFrom=null;save()}else linkFrom=null;render();drag=null;return}
+sel={t:'n',id:n.id};drag={k:'mv',n,ox:p.x-n.x,oy:p.y-n.y,moved:false}}
+else if(t&&t.dataset.e){sel={t:'e',i:+t.dataset.e};drag=null}
+else{sel=null;linkFrom=null;drag={k:'pan',sx:ev.clientX,sy:ev.clientY,vx:view.x,vy:view.y}}render()});
+cv.addEventListener('pointermove',ev=>{if(!drag)return;const p=pt(ev);
+if(drag.k=='pan'){view.x=drag.vx+ev.clientX-drag.sx;view.y=drag.vy+ev.clientY-drag.sy}
+else if(drag.k=='mv'){drag.n.x=Math.round((p.x-drag.ox)/10)*10;drag.n.y=Math.round((p.y-drag.oy)/10)*10;drag.moved=true}
+else{drag.n.w=Math.max(40,Math.round((p.x-drag.ox)/10)*10);drag.n.h=Math.max(40,Math.round((p.y-drag.oy)/10)*10)}render()});
+const end=()=>{if(drag&&drag.k!='pan')save();drag=null};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+cv.addEventListener('dblclick',ev=>{const t=ev.target.closest('[data-n]');if(t){sel={t:'n',id:t.dataset.n};editText()}});
+cv.addEventListener('wheel',ev=>{ev.preventDefault();zoom(ev.deltaY<0?1.1:.9)},{passive:false});
+function zoom(f){const r=cv.getBoundingClientRect(),cx=r.width/2,cy=r.height/2,k=Math.min(3,Math.max(.2,view.k*f));
+view.x=cx-(cx-view.x)*k/view.k;view.y=cy-(cy-view.y)*k/view.k;view.k=k;render()}
+function bbox(){if(!S.nodes.length)return{x:0,y:0,w:400,h:300};const x1=Math.min(...S.nodes.map(n=>n.x)),y1=Math.min(...S.nodes.map(n=>n.y)),x2=Math.max(...S.nodes.map(n=>n.x+n.w)),y2=Math.max(...S.nodes.map(n=>n.y+n.h));return{x:x1,y:y1,w:x2-x1,h:y2-y1}}
+function fit(){const b=bbox(),r=cv.getBoundingClientRect(),k=Math.min(1.5,Math.min((r.width-40)/b.w,(r.height-40)/b.h));view.k=k;view.x=(r.width-b.w*k)/2-b.x*k;view.y=(r.height-b.h*k)/2-b.y*k;render()}
+$('bZi').onclick=()=>zoom(1.2);$('bZo').onclick=()=>zoom(1/1.2);$('bFit').onclick=fit;
+$('bAdd').onclick=()=>{const r=cv.getBoundingClientRect(),n={id:uid(),text:'新方框',x:Math.round(((r.width/2-view.x)/view.k-70)/10)*10,y:Math.round(((r.height/2-view.y)/view.k-30)/10)*10,w:140,h:60,v:0};
+S.nodes.push(n);sel={t:'n',id:n.id};save();render();editText()};
+$('bLink').onclick=()=>{mode=mode=='link'?'sel':'link';linkFrom=null;render()};
+function editText(){if(!sel||sel.t!='n')return;$('ta').value=N(sel.id).text;$('dT').showModal();$('ta').focus()}
+$('bEdit').onclick=editText;$('tNo').onclick=()=>$('dT').close();
+$('tOk').onclick=()=>{const n=N(sel.id);n.text=$('ta').value||' ';save();render();$('dT').close()};
+$('bDir').onclick=()=>{const n=N(sel.id);n.v=n.v?0:1;[n.w,n.h]=[n.h,n.w];save();render()};
+$('bDel').onclick=()=>{if(!sel)return;if(sel.t=='n'){S.nodes=S.nodes.filter(n=>n.id!=sel.id);S.edges=S.edges.filter(e=>e.f!=sel.id&&e.t!=sel.id)}else S.edges.splice(sel.i,1);sel=null;save();render()};
+/* 檔案 */
+const saves=()=>{try{return JSON.parse(localStorage.getItem('sd_saves'))||{}}catch(e){return{}}};
+function list(){$('fn').textContent='目前：'+S.name;const s=saves();$('fl').innerHTML=Object.keys(s).map(k=>`<div class="row"><span>${esc(k)}</span><span><button data-o="${esc(k)}">開啟</button><button data-x="${esc(k)}">刪除</button></span></div>`).join('')||'<div style="color:#888">尚無儲存的結構</div>'}
+$('bFile').onclick=()=>{list();$('dF').showModal()};$('fClose').onclick=()=>$('dF').close();
+$('fl').onclick=e=>{const s=saves(),o=e.target.dataset.o,x=e.target.dataset.x;
+if(o){S=JSON.parse(JSON.stringify(s[o]));S.name=o;sel=null;save();fit();$('dF').close()}
+if(x&&confirm('刪除「'+x+'」？')){delete s[x];localStorage.setItem('sd_saves',JSON.stringify(s));list()}};
+function saveAs(name){const s=saves();s[name]=JSON.parse(JSON.stringify(S));S.name=name;s[name].name=name;localStorage.setItem('sd_saves',JSON.stringify(s));save();list()}
+$('fSave').onclick=()=>{S.name&&S.name!='未命名'&&S.name!='範例'?saveAs(S.name):$('fAs').click()};
+$('fAs').onclick=()=>{const n=prompt('結構名稱',S.name);if(n)saveAs(n.trim())};
+$('fNew').onclick=()=>{if(confirm('建立新的空白結構？（目前內容已自動暫存，未儲存的會被取代）')){S={name:'未命名',nodes:[],edges:[]};sel=null;save();render();$('dF').close()}};
+async function saveFile(blob,name,type,ext){if(window.showSaveFilePicker){try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:type,accept:{[blob.type]:[ext]}}]});const w=await h.createWritable();await w.write(blob);await w.close();return}catch(e){if(e.name=='AbortError')return}}
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
+$('fExp').onclick=()=>saveFile(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),(S.name||'結構圖')+'.json','結構圖資料','.json');
+$('fImp').onclick=()=>$('fi').click();
+$('fi').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=JSON.parse(await f.text());if(!Array.isArray(d.nodes)||!Array.isArray(d.edges))throw 0;S={name:d.name||f.name.replace(/\.json$/,''),nodes:d.nodes,edges:d.edges};sel=null;save();fit();$('dF').close()}catch(x){alert('檔案格式不正確')}};
+/* PDF：使用瀏覽器列印→另存為 PDF */
+function svgStr(k){const b=bbox(),p=24,w=b.w+2*p,h=b.h+2*p;
+return{w,h,b,s:`<svg xmlns="http://www.w3.org/2000/svg" width="${w*k}" height="${h*k}" viewBox="${b.x-p} ${b.y-p} ${w} ${h}" style="font-family:'Noto Sans TC',sans-serif"><style>.nd rect{fill:#fff;stroke:#000;stroke-width:2}.nd text{font-size:18px;text-anchor:middle;dominant-baseline:central}.eg{fill:none;stroke:#000;stroke-width:2}</style>${inner(false)}</svg>`}}
+$('bPdf').onclick=()=>{if(!S.nodes.length)return alert('目前沒有內容');const o=svgStr(1),land=o.b.w>=o.b.h;
+let st=document.getElementById('ps');if(!st){st=document.createElement('style');st.id='ps';document.head.appendChild(st)}
+st.textContent=`@page{size:A4 ${land?'landscape':'portrait'};margin:8mm}@media print{#pb svg{max-height:${land?190:277}mm}}`;
+$('pb').innerHTML=o.s;setTimeout(()=>window.print(),100)};
+$('bPng').onclick=()=>{if(!S.nodes.length)return alert('目前沒有內容');const o=svgStr(2),img=new Image();
+img.onload=()=>{const c=document.createElement('canvas');c.width=o.w*2;c.height=o.h*2;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0);c.toBlob(bl=>saveFile(bl,(S.name||'結構圖')+'.png','PNG 圖片','.png'))};
+img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(o.s)};
+/* 顏色與箭頭 */
+const PN=['#ffffff','#ffe3e3','#fff3bf','#d3f9d8','#d0ebff','#e5dbff','#ffd8a8','#dee2e6'],PE=['#222222','#d9480f','#1c7ed6','#2f9e44','#9c36b5','#868e96'];
+$('bCol').onclick=()=>{if(!sel)return;$('sw').innerHTML=(sel.t=='n'?PN:PE).map(c=>`<button data-c="${c}" style="background:${c};width:46px;height:46px;border:2px solid #666;border-radius:8px"></button>`).join('');$('dC').showModal()};
+$('sw').onclick=e=>{const c=e.target.dataset.c;if(!c||!sel)return;(sel.t=='n'?N(sel.id):S.edges[sel.i]).c=c;save();render();$('dC').close()};
+$('cNo').onclick=()=>$('dC').close();
+$('bArw').onclick=()=>{if(sel&&sel.t=='e'){const e=S.edges[sel.i];e.a=e.a?0:1;save();render()}};
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+load();render();setTimeout(fit,50);
+</script></body></html>
