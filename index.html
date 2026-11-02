@@ -43,12 +43,29 @@ function route(a,b){const ax=a.x+a.w/2,ay=a.y+a.h/2,bx=b.x+b.w/2,by=b.y+b.h/2,
 dx=Math.abs(bx-ax)-(a.w+b.w)/2,dy=Math.abs(by-ay)-(a.h+b.h)/2;
 if(dx>=dy){const s=bx>ax?1:-1,x1=ax+s*a.w/2,x2=bx-s*b.w/2,m=(x1+x2)/2;return{d:`M${x1} ${ay}H${m}V${by}H${x2}`,x:x2,y:by,u:s,v:0}}
 const s=by>ay?1:-1,y1=ay+s*a.h/2,y2=by-s*b.h/2,m=(y1+y2)/2;return{d:`M${ax} ${y1}V${m}H${bx}V${y2}`,x:bx,y:y2,u:0,v:s}}
+function plan(){const deg={};S.edges.forEach(e=>{deg[e.f]=(deg[e.f]||0)+1;deg[e.t]=(deg[e.t]||0)+1});
+const P={},G={},cand={};
+S.edges.forEach((e,i)=>{const a=N(e.f),b=N(e.t);if(!a||!b)return;const hub=deg[e.f]>=deg[e.t]?a:b,o=hub==a?b:a,g={};
+if(o.x>=hub.x+hub.w)g.R=o.x-hub.x-hub.w;if(o.x+o.w<=hub.x)g.L=hub.x-o.x-o.w;if(o.y>=hub.y+hub.h)g.B=o.y-hub.y-hub.h;if(o.y+o.h<=hub.y)g.T=hub.y-o.y-o.h;
+(cand[hub.id]=cand[hub.id]||[]).push({i,hub,o,g})});
+for(const id in cand){let L=cand[id];
+while(L.length){const cnt={},gs={};L.forEach(x=>{for(const s in x.g){cnt[s]=(cnt[s]||0)+1;gs[s]=(gs[s]||0)+x.g[s]}});
+const ks=Object.keys(cnt);if(!ks.length)break;ks.sort((p,q)=>cnt[q]-cnt[p]||gs[q]-gs[p]);const best=ks[0];
+const m=L.filter(x=>best in x.g);m.forEach(x=>{P[x.i]={hub:x.hub,o:x.o,s:best,k:id+best}});G[id+best]=m;L=L.filter(x=>!(best in x.g))}}
+return{P,G}}
+function geom(i,e,PL){const p=PL.P[i],a=N(e.f),b=N(e.t);if(!p)return route(a,b);
+const h=p.hub,o=p.o,s=p.s,g=PL.G[p.k];let pts;
+if(s=='R'||s=='L'){const x1=s=='R'?h.x+h.w:h.x,ex=s=='R'?o.x:o.x+o.w,xs=g.map(q=>s=='R'?q.o.x:q.o.x+q.o.w),near=s=='R'?Math.min(...xs):Math.max(...xs),tx=(x1+near)/2,hy=h.y+h.h/2,oy=o.y+o.h/2;pts=[[x1,hy],[tx,hy],[tx,oy],[ex,oy]]}
+else{const y1=s=='B'?h.y+h.h:h.y,ey=s=='B'?o.y:o.y+o.h,ys=g.map(q=>s=='B'?q.o.y:q.o.y+q.o.h),near=s=='B'?Math.min(...ys):Math.max(...ys),ty=(y1+near)/2,hx=h.x+h.w/2,ox=o.x+o.w/2;pts=[[hx,y1],[hx,ty],[ox,ty],[ox,ey]]}
+if(h==b)pts.reverse();
+const n=pts.length,L=pts[n-1];let k=n-2;while(k>0&&pts[k][0]==L[0]&&pts[k][1]==L[1])k--;
+return{d:'M'+pts.map(q=>q.join(' ')).join('L'),x:L[0],y:L[1],u:Math.sign(L[0]-pts[k][0]),v:Math.sign(L[1]-pts[k][1])}}
 function arrow(r,c){const bx=r.x-r.u*14,by=r.y-r.v*14;return`<polygon points="${r.x},${r.y} ${bx+r.v*7},${by-r.u*7} ${bx-r.v*7},${by+r.u*7}" style="fill:${c}"/>`}
 function txt(n){const L=n.text.split('\n'),lh=22,cx=n.x+n.w/2,cy=n.y+n.h/2;let o='';
 if(!n.v)L.forEach((s,i)=>o+=`<text x="${cx}" y="${cy+(i-(L.length-1)/2)*lh}">${esc(s)}</text>`);
 else L.forEach((s,i)=>{const C=[...s],x=cx+((L.length-1)/2-i)*lh;C.forEach((ch,j)=>o+=`<text x="${x}" y="${cy+(j-(C.length-1)/2)*lh}">${esc(ch)}</text>`)});return o}
-function inner(edit){let o='';
-S.edges.forEach((e,i)=>{const a=N(e.f),b=N(e.t);if(!a||!b)return;const r=route(a,b),c=e.c||'#222',sl=edit&&sel&&sel.t=='e'&&sel.i==i;
+function inner(edit){let o='';const PL=plan();
+S.edges.forEach((e,i)=>{const a=N(e.f),b=N(e.t);if(!a||!b)return;const r=geom(i,e,PL),c=e.c||'#222',sl=edit&&sel&&sel.t=='e'&&sel.i==i;
 o+=`<path class="eg${sl?' sel':''}" ${sl?'':`style="stroke:${c}"`} d="${r.d}"/>`+(e.a?arrow(r,sl?'#d9480f':c):'')+(edit?`<path class="hit" data-e="${i}" d="${r.d}"/>`:'')});
 S.nodes.forEach(n=>{const s=edit&&sel&&sel.t=='n'&&sel.id==n.id;
 o+=`<g class="nd${s?' sel':''}${edit&&linkFrom==n.id?' from':''}" data-n="${n.id}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}"${n.c?` style="fill:${n.c}"`:''}/>${txt(n)}`+
