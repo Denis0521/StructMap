@@ -14,9 +14,6 @@
 #cv{position:fixed;top:54px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 54px);touch-action:none;background-image:radial-gradient(#cfc8b8 1px,transparent 1px);background-size:20px 20px}
 .nd rect{fill:#fff;stroke:#222;stroke-width:2}.nd.sel rect{stroke:#d9480f;stroke-width:3.5}.nd.from rect{fill:#fff3bf}
 .nd text{text-anchor:middle;dominant-baseline:central;fill:var(--tf,#111);pointer-events:none;user-select:none}
-@keyframes flt{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-@keyframes flt2{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-.fl{animation:flt 3.2s ease-in-out infinite}.fl2{animation:flt2 2.4s ease-in-out infinite}
 #dS{position:fixed;inset:auto 0 0 0;margin:0;width:100%;max-width:none;max-height:46vh;overflow:auto;border-radius:16px 16px 0 0;box-shadow:0 -4px 16px #0005;z-index:9}
 #dS label{display:flex;justify-content:space-between;align-items:center;margin:7px 0;gap:10px;font-size:15px}#dS select{font-size:15px;padding:5px}#dS input[type=range]{width:55%}
 #dS .sh{display:flex;justify-content:space-between;align-items:center}#dS .sh button{margin:0}
@@ -40,12 +37,10 @@ textarea{width:100%;height:110px;font-size:18px;padding:8px}dialog button{paddin
 <dialog id="dS"><div class="sh"><b>方框與文字特效</b><button id="sX">關閉</button></div>
 <label>圓角<input type="range" id="sR" min="0" max="40"></label>
 <label>陰影<select id="sS"><option value="0">無</option><option value="1">柔和</option><option value="2">立體</option></select></label>
-<label>方框漂浮<input type="checkbox" id="sF"></label>
 <label>字體<select id="sFf"><option value="0">預設黑體</option><option value="1">明體</option><option value="2">楷體</option><option value="3">圓體</option><option value="4">芫荽體</option></select></label>
 <label>字級<input type="range" id="sZ" min="12" max="44"></label>
 <label>粗體<input type="checkbox" id="sB"></label>
-<label>文字效果<select id="sTe"><option value="0">無</option><option value="1">立體</option><option value="2">浮雕</option><option value="3">發光</option></select></label>
-<label>文字漂浮<input type="checkbox" id="sTf"></label>
+<label>文字效果<select id="sTe"><option value="0">無</option><option value="4">陰影</option><option value="3">發光</option></select></label>
 <div id="sTc" style="display:flex;gap:8px;margin:8px 0"></div>
 <button id="sAll">套用到全部方框</button></dialog>
 <input type="file" id="fi" accept=".json,application/json" hidden><div id="pb"></div>
@@ -90,16 +85,13 @@ function inner(edit){let o='';const PL=plan();
 S.edges.forEach((e,i)=>{const a=N(e.f),b=N(e.t);if(!a||!b)return;const r=geom(i,e,PL),c=e.c||'#222',sl=edit&&sel&&sel.t=='e'&&sel.i==i;
 o+=`<path class="eg${sl?' sel':''}" ${sl?'':`style="stroke:${c}"`} d="${r.d}"/>`+(e.a?arrow(r,sl?'#d9480f':c):'')+(edit?`<path class="hit" data-e="${i}" d="${r.d}"/>`:'')});
 S.nodes.forEach(n=>{const s=edit&&sel&&sel.t=='n'&&sel.id==n.id,fs=n.fs||18,r=n.r||0,sh=n.sh||0,tc=n.tc||'#111',te=n.te||0;
-const dl=p=>`animation-delay:${(-(((performance.now()/1000)+(n.id.charCodeAt(0)%7)*.4)%p)).toFixed(2)}s`;
 let bx='';
 if(sh==2)bx+=`<rect x="${n.x+7}" y="${n.y+7}" width="${n.w}" height="${n.h}" rx="${r}" style="fill:#2b2b2b;stroke:#2b2b2b"/>`;
 bx+=`<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${r}" style="${n.c?`fill:${n.c};`:''}${sh==1?'filter:drop-shadow(0 6px 6px rgba(0,0,0,.4))':''}"/>`;
 let t='';
-if(te==1)for(let k=6;k>=1;k--)t+=`<g transform="translate(${k*.9} ${k*.9})" style="--tf:${k>3?'#2f3b52':'#5d6f8c'}">${txt(n,fs)}</g>`;
-if(te==2)t+=`<g transform="translate(1.5 1.5)" style="--tf:#fff">${txt(n,fs)}</g><g transform="translate(-1 -1)" style="--tf:#333">${txt(n,fs)}</g>`;
 t+=`<g style="--tf:${tc}">${txt(n,fs)}</g>`;
-const tg=`<g class="${n.tf?'fl2':''}" style="font-size:${fs}px;font-family:${FF[n.ff||0]};font-weight:${n.fb?700:400};${te==3?'filter:drop-shadow(0 0 3px #4dabf7) drop-shadow(0 0 6px #4dabf7);':''}${n.tf?dl(2.4):''}">${t}</g>`;
-o+=`<g class="nd${s?' sel':''}${edit&&linkFrom==n.id?' from':''}" data-n="${n.id}"><g class="${n.fl?'fl':''}" style="${n.fl?dl(3.2):''}">${bx}${tg}`+(s?`<circle data-h="${n.id}" cx="${n.x+n.w}" cy="${n.y+n.h}" r="11" fill="#d9480f"/>`:'')+`</g></g>`});
+const tg=`<g style="font-size:${fs}px;font-family:${FF[n.ff||0]};font-weight:${n.fb?700:400};${te==3?'filter:drop-shadow(0 0 3px #4dabf7) drop-shadow(0 0 6px #4dabf7);':''}${te==4?'filter:drop-shadow(2px 3px 2px rgba(0,0,0,.5));':''}">${t}</g>`;
+o+=`<g class="nd${s?' sel':''}${edit&&linkFrom==n.id?' from':''}" data-n="${n.id}"><g>${bx}${tg}`+(s?`<circle data-h="${n.id}" cx="${n.x+n.w}" cy="${n.y+n.h}" r="11" fill="#d9480f"/>`:'')+`</g></g>`});
 return o}
 function render(){W.setAttribute('transform',`translate(${view.x} ${view.y}) scale(${view.k})`);W.innerHTML=inner(true);
 $('bLink').classList.toggle('on',mode=='link');
@@ -167,13 +159,13 @@ $('sw').onclick=e=>{const c=e.target.dataset.c;if(!c||!sel)return;(sel.t=='n'?N(
 $('cNo').onclick=()=>$('dC').close();
 $('bArw').onclick=()=>{if(sel&&sel.t=='e'){const e=S.edges[sel.i];e.a=e.a?0:1;save();render()}};
 /* 特效 */
-function fillS(){const n=N(sel.id);$('sR').value=n.r||0;$('sS').value=n.sh||0;$('sF').checked=!!n.fl;$('sFf').value=n.ff||0;$('sZ').value=n.fs||18;$('sB').checked=!!n.fb;$('sTe').value=n.te||0;$('sTf').checked=!!n.tf}
-function setS(){if(!sel||sel.t!='n')return;const n=N(sel.id);n.r=+$('sR').value;n.sh=+$('sS').value;n.fl=$('sF').checked?1:0;n.ff=+$('sFf').value;n.fs=+$('sZ').value;n.fb=$('sB').checked?1:0;n.te=+$('sTe').value;n.tf=$('sTf').checked?1:0;save();render()}
-['sR','sS','sF','sFf','sZ','sB','sTe','sTf'].forEach(i=>$(i).addEventListener('input',setS));
+function fillS(){const n=N(sel.id);$('sR').value=n.r||0;$('sS').value=n.sh||0;$('sFf').value=n.ff||0;$('sZ').value=n.fs||18;$('sB').checked=!!n.fb;$('sTe').value=(n.te==3||n.te==4)?n.te:0;}
+function setS(){if(!sel||sel.t!='n')return;const n=N(sel.id);n.r=+$('sR').value;n.sh=+$('sS').value;n.ff=+$('sFf').value;n.fs=+$('sZ').value;n.fb=$('sB').checked?1:0;n.te=+$('sTe').value;save();render()}
+['sR','sS','sFf','sZ','sB','sTe'].forEach(i=>$(i).addEventListener('input',setS));
 $('sTc').innerHTML=['#111111','#ffffff','#d9480f','#1c7ed6','#2f9e44','#9c36b5','#e67700'].map(c=>`<button data-t="${c}" style="background:${c};width:38px;height:38px;border:2px solid #666;border-radius:50%;padding:0;margin:0"></button>`).join('');
 $('sTc').onclick=e=>{const c=e.target.dataset.t;if(c&&sel&&sel.t=='n'){N(sel.id).tc=c;save();render()}};
 $('bFx').onclick=()=>{if(sel&&sel.t=='n'){fillS();$('dS').show()}};$('sX').onclick=()=>$('dS').close();
-$('sAll').onclick=()=>{if(!sel||sel.t!='n')return;const n=N(sel.id);S.nodes.forEach(m=>['r','sh','fl','ff','fs','fb','te','tf','tc'].forEach(k=>m[k]=n[k]));save();render()};
+$('sAll').onclick=()=>{if(!sel||sel.t!='n')return;const n=N(sel.id);S.nodes.forEach(m=>['r','sh','ff','fs','fb','te','tc'].forEach(k=>m[k]=n[k]));save();render()};
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 load();render();setTimeout(fit,50);
 </script></body></html>
