@@ -1,6 +1,10 @@
 <!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#2b5d8a"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Iansui&display=swap">
 <title>結構圖工具</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;height:100%;font-family:system-ui,"Noto Sans TC",sans-serif;background:#f4f1ea;overflow:hidden}
@@ -9,7 +13,13 @@
 #bar button.on{background:#ffd54a}#bar button:disabled{opacity:.4}
 #cv{position:fixed;top:54px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 54px);touch-action:none;background-image:radial-gradient(#cfc8b8 1px,transparent 1px);background-size:20px 20px}
 .nd rect{fill:#fff;stroke:#222;stroke-width:2}.nd.sel rect{stroke:#d9480f;stroke-width:3.5}.nd.from rect{fill:#fff3bf}
-.nd text{font-size:18px;text-anchor:middle;dominant-baseline:central;fill:#111;pointer-events:none;user-select:none}
+.nd text{text-anchor:middle;dominant-baseline:central;fill:var(--tf,#111);pointer-events:none;user-select:none}
+@keyframes flt{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes flt2{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.fl{animation:flt 3.2s ease-in-out infinite}.fl2{animation:flt2 2.4s ease-in-out infinite}
+#dS{position:fixed;inset:auto 0 0 0;margin:0;width:100%;max-width:none;max-height:46vh;overflow:auto;border-radius:16px 16px 0 0;box-shadow:0 -4px 16px #0005;z-index:9}
+#dS label{display:flex;justify-content:space-between;align-items:center;margin:7px 0;gap:10px;font-size:15px}#dS select{font-size:15px;padding:5px}#dS input[type=range]{width:55%}
+#dS .sh{display:flex;justify-content:space-between;align-items:center}#dS .sh button{margin:0}
 .eg{fill:none;stroke:#222;stroke-width:2}.eg.sel{stroke:#d9480f;stroke-width:3.5}.hit{fill:none;stroke:transparent;stroke-width:16}
 #hint{position:fixed;bottom:8px;left:8px;right:8px;text-align:center;font-size:13px;color:#555;pointer-events:none}
 dialog{border:0;border-radius:12px;padding:16px;width:min(92vw,420px)}dialog::backdrop{background:#0006}
@@ -19,7 +29,7 @@ textarea{width:100%;height:110px;font-size:18px;padding:8px}dialog button{paddin
 @media print{html,body{overflow:visible;background:#fff}body>*:not(#pb){display:none!important}#pb{display:block}#pb svg{width:100%;height:auto;max-height:190mm}}
 </style></head><body>
 <div id="bar">
-<button id="bAdd">＋方框</button><button id="bLink">連線</button><button id="bEdit">改文字</button><button id="bDir">直/橫</button><button id="bCol">顏色</button><button id="bArw">箭頭</button><button id="bDel">刪除</button>
+<button id="bAdd">＋方框</button><button id="bLink">連線</button><button id="bEdit">改文字</button><button id="bDir">直/橫</button><button id="bCol">顏色</button><button id="bArw">箭頭</button><button id="bFx">特效</button><button id="bDel">刪除</button>
 <button id="bZi">放大</button><button id="bZo">縮小</button><button id="bFit">置中</button><button id="bFile">檔案</button><button id="bPdf">匯出PDF</button><button id="bPng">匯出PNG</button>
 </div>
 <svg id="cv"><g id="w"></g></svg>
@@ -27,6 +37,17 @@ textarea{width:100%;height:110px;font-size:18px;padding:8px}dialog button{paddin
 <dialog id="dT"><b>方框文字</b>（可換行）<textarea id="ta"></textarea><div><button id="tOk">確定</button><button id="tNo">取消</button></div></dialog>
 <dialog id="dF"><b id="fn"></b><div style="margin:8px 0"><button id="fNew">新建</button><button id="fSave">儲存</button><button id="fAs">另存新檔</button><button id="fExp">匯出檔案</button><button id="fImp">匯入檔案</button></div><div id="fl"></div><button id="fClose">關閉</button></dialog>
 <dialog id="dC"><b>選擇顏色</b><div id="sw" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"></div><button id="cNo">取消</button></dialog>
+<dialog id="dS"><div class="sh"><b>方框與文字特效</b><button id="sX">關閉</button></div>
+<label>圓角<input type="range" id="sR" min="0" max="40"></label>
+<label>陰影<select id="sS"><option value="0">無</option><option value="1">柔和</option><option value="2">立體</option></select></label>
+<label>方框漂浮<input type="checkbox" id="sF"></label>
+<label>字體<select id="sFf"><option value="0">預設黑體</option><option value="1">明體</option><option value="2">楷體</option><option value="3">圓體</option><option value="4">芫荽體</option></select></label>
+<label>字級<input type="range" id="sZ" min="12" max="44"></label>
+<label>粗體<input type="checkbox" id="sB"></label>
+<label>文字效果<select id="sTe"><option value="0">無</option><option value="1">立體</option><option value="2">浮雕</option><option value="3">發光</option></select></label>
+<label>文字漂浮<input type="checkbox" id="sTf"></label>
+<div id="sTc" style="display:flex;gap:8px;margin:8px 0"></div>
+<button id="sAll">套用到全部方框</button></dialog>
 <input type="file" id="fi" accept=".json,application/json" hidden><div id="pb"></div>
 <script>
 const $=id=>document.getElementById(id),cv=$('cv'),W=$('w');
@@ -61,18 +82,28 @@ if(h==b)pts.reverse();
 const n=pts.length,L=pts[n-1];let k=n-2;while(k>0&&pts[k][0]==L[0]&&pts[k][1]==L[1])k--;
 return{d:'M'+pts.map(q=>q.join(' ')).join('L'),x:L[0],y:L[1],u:Math.sign(L[0]-pts[k][0]),v:Math.sign(L[1]-pts[k][1])}}
 function arrow(r,c){const bx=r.x-r.u*14,by=r.y-r.v*14;return`<polygon points="${r.x},${r.y} ${bx+r.v*7},${by-r.u*7} ${bx-r.v*7},${by+r.u*7}" style="fill:${c}"/>`}
-function txt(n){const L=n.text.split('\n'),lh=22,cx=n.x+n.w/2,cy=n.y+n.h/2;let o='';
+const FF=["system-ui,sans-serif","'Noto Serif TC','Songti TC','PMingLiU',serif","'LXGW WenKai TC','Kaiti TC','BiauKai','DFKai-SB',serif","'Huninn','Noto Sans TC',sans-serif","'Iansui','LXGW WenKai TC',cursive"];
+function txt(n,fs=18){const L=n.text.split('\n'),lh=Math.round(fs*1.22),cx=n.x+n.w/2,cy=n.y+n.h/2;let o='';
 if(!n.v)L.forEach((s,i)=>o+=`<text x="${cx}" y="${cy+(i-(L.length-1)/2)*lh}">${esc(s)}</text>`);
 else L.forEach((s,i)=>{const C=[...s],x=cx+((L.length-1)/2-i)*lh;C.forEach((ch,j)=>o+=`<text x="${x}" y="${cy+(j-(C.length-1)/2)*lh}">${esc(ch)}</text>`)});return o}
 function inner(edit){let o='';const PL=plan();
 S.edges.forEach((e,i)=>{const a=N(e.f),b=N(e.t);if(!a||!b)return;const r=geom(i,e,PL),c=e.c||'#222',sl=edit&&sel&&sel.t=='e'&&sel.i==i;
 o+=`<path class="eg${sl?' sel':''}" ${sl?'':`style="stroke:${c}"`} d="${r.d}"/>`+(e.a?arrow(r,sl?'#d9480f':c):'')+(edit?`<path class="hit" data-e="${i}" d="${r.d}"/>`:'')});
-S.nodes.forEach(n=>{const s=edit&&sel&&sel.t=='n'&&sel.id==n.id;
-o+=`<g class="nd${s?' sel':''}${edit&&linkFrom==n.id?' from':''}" data-n="${n.id}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}"${n.c?` style="fill:${n.c}"`:''}/>${txt(n)}`+
-(s?`<circle data-h="${n.id}" cx="${n.x+n.w}" cy="${n.y+n.h}" r="11" fill="#d9480f"/>`:'')+`</g>`});return o}
+S.nodes.forEach(n=>{const s=edit&&sel&&sel.t=='n'&&sel.id==n.id,fs=n.fs||18,r=n.r||0,sh=n.sh||0,tc=n.tc||'#111',te=n.te||0;
+const dl=p=>`animation-delay:${(-(((performance.now()/1000)+(n.id.charCodeAt(0)%7)*.4)%p)).toFixed(2)}s`;
+let bx='';
+if(sh==2)bx+=`<rect x="${n.x+7}" y="${n.y+7}" width="${n.w}" height="${n.h}" rx="${r}" style="fill:#2b2b2b;stroke:#2b2b2b"/>`;
+bx+=`<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${r}" style="${n.c?`fill:${n.c};`:''}${sh==1?'filter:drop-shadow(0 6px 6px rgba(0,0,0,.4))':''}"/>`;
+let t='';
+if(te==1)for(let k=6;k>=1;k--)t+=`<g transform="translate(${k*.9} ${k*.9})" style="--tf:${k>3?'#2f3b52':'#5d6f8c'}">${txt(n,fs)}</g>`;
+if(te==2)t+=`<g transform="translate(1.5 1.5)" style="--tf:#fff">${txt(n,fs)}</g><g transform="translate(-1 -1)" style="--tf:#333">${txt(n,fs)}</g>`;
+t+=`<g style="--tf:${tc}">${txt(n,fs)}</g>`;
+const tg=`<g class="${n.tf?'fl2':''}" style="font-size:${fs}px;font-family:${FF[n.ff||0]};font-weight:${n.fb?700:400};${te==3?'filter:drop-shadow(0 0 3px #4dabf7) drop-shadow(0 0 6px #4dabf7);':''}${n.tf?dl(2.4):''}">${t}</g>`;
+o+=`<g class="nd${s?' sel':''}${edit&&linkFrom==n.id?' from':''}" data-n="${n.id}"><g class="${n.fl?'fl':''}" style="${n.fl?dl(3.2):''}">${bx}${tg}`+(s?`<circle data-h="${n.id}" cx="${n.x+n.w}" cy="${n.y+n.h}" r="11" fill="#d9480f"/>`:'')+`</g></g>`});
+return o}
 function render(){W.setAttribute('transform',`translate(${view.x} ${view.y}) scale(${view.k})`);W.innerHTML=inner(true);
 $('bLink').classList.toggle('on',mode=='link');
-const hasN=sel&&sel.t=='n';$('bEdit').disabled=$('bDir').disabled=!hasN;$('bDel').disabled=$('bCol').disabled=!sel;$('bArw').disabled=!(sel&&sel.t=='e');
+const hasN=sel&&sel.t=='n';$('bEdit').disabled=$('bDir').disabled=!hasN;$('bDel').disabled=$('bCol').disabled=!sel;$('bArw').disabled=!(sel&&sel.t=='e');$('bFx').disabled=!hasN;if($('dS').open){if(hasN)fillS();else $('dS').close()}
 $('hint').textContent=mode=='link'?(linkFrom?'再點選要連到的方框':'點選起點方框（箭頭會指向第二個點選的方框）'):'拖曳方框移動；選取後拖紅點縮放；拖空白處平移'}
 function pt(ev){const r=cv.getBoundingClientRect();return{x:(ev.clientX-r.left-view.x)/view.k,y:(ev.clientY-r.top-view.y)/view.k}}
 let drag=null;
@@ -121,7 +152,7 @@ $('fImp').onclick=()=>$('fi').click();
 $('fi').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=JSON.parse(await f.text());if(!Array.isArray(d.nodes)||!Array.isArray(d.edges))throw 0;S={name:d.name||f.name.replace(/\.json$/,''),nodes:d.nodes,edges:d.edges};sel=null;save();fit();$('dF').close()}catch(x){alert('檔案格式不正確')}};
 /* PDF：使用瀏覽器列印→另存為 PDF */
 function svgStr(k){const b=bbox(),p=24,w=b.w+2*p,h=b.h+2*p;
-return{w,h,b,s:`<svg xmlns="http://www.w3.org/2000/svg" width="${w*k}" height="${h*k}" viewBox="${b.x-p} ${b.y-p} ${w} ${h}" style="font-family:'Noto Sans TC',sans-serif"><style>.nd rect{fill:#fff;stroke:#000;stroke-width:2}.nd text{font-size:18px;text-anchor:middle;dominant-baseline:central}.eg{fill:none;stroke:#000;stroke-width:2}</style>${inner(false)}</svg>`}}
+return{w,h,b,s:`<svg xmlns="http://www.w3.org/2000/svg" width="${w*k}" height="${h*k}" viewBox="${b.x-p} ${b.y-p} ${w} ${h}" style="font-family:'Noto Sans TC',sans-serif"><style>.nd rect{fill:#fff;stroke:#000;stroke-width:2}.nd text{text-anchor:middle;dominant-baseline:central;fill:var(--tf,#000)}.eg{fill:none;stroke:#000;stroke-width:2}</style>${inner(false)}</svg>`}}
 $('bPdf').onclick=()=>{if(!S.nodes.length)return alert('目前沒有內容');const o=svgStr(1),land=o.b.w>=o.b.h;
 let st=document.getElementById('ps');if(!st){st=document.createElement('style');st.id='ps';document.head.appendChild(st)}
 st.textContent=`@page{size:A4 ${land?'landscape':'portrait'};margin:8mm}@media print{#pb svg{max-height:${land?190:277}mm}}`;
@@ -135,6 +166,14 @@ $('bCol').onclick=()=>{if(!sel)return;$('sw').innerHTML=(sel.t=='n'?PN:PE).map(c
 $('sw').onclick=e=>{const c=e.target.dataset.c;if(!c||!sel)return;(sel.t=='n'?N(sel.id):S.edges[sel.i]).c=c;save();render();$('dC').close()};
 $('cNo').onclick=()=>$('dC').close();
 $('bArw').onclick=()=>{if(sel&&sel.t=='e'){const e=S.edges[sel.i];e.a=e.a?0:1;save();render()}};
+/* 特效 */
+function fillS(){const n=N(sel.id);$('sR').value=n.r||0;$('sS').value=n.sh||0;$('sF').checked=!!n.fl;$('sFf').value=n.ff||0;$('sZ').value=n.fs||18;$('sB').checked=!!n.fb;$('sTe').value=n.te||0;$('sTf').checked=!!n.tf}
+function setS(){if(!sel||sel.t!='n')return;const n=N(sel.id);n.r=+$('sR').value;n.sh=+$('sS').value;n.fl=$('sF').checked?1:0;n.ff=+$('sFf').value;n.fs=+$('sZ').value;n.fb=$('sB').checked?1:0;n.te=+$('sTe').value;n.tf=$('sTf').checked?1:0;save();render()}
+['sR','sS','sF','sFf','sZ','sB','sTe','sTf'].forEach(i=>$(i).addEventListener('input',setS));
+$('sTc').innerHTML=['#111111','#ffffff','#d9480f','#1c7ed6','#2f9e44','#9c36b5','#e67700'].map(c=>`<button data-t="${c}" style="background:${c};width:38px;height:38px;border:2px solid #666;border-radius:50%;padding:0;margin:0"></button>`).join('');
+$('sTc').onclick=e=>{const c=e.target.dataset.t;if(c&&sel&&sel.t=='n'){N(sel.id).tc=c;save();render()}};
+$('bFx').onclick=()=>{if(sel&&sel.t=='n'){fillS();$('dS').show()}};$('sX').onclick=()=>$('dS').close();
+$('sAll').onclick=()=>{if(!sel||sel.t!='n')return;const n=N(sel.id);S.nodes.forEach(m=>['r','sh','fl','ff','fs','fb','te','tf','tc'].forEach(k=>m[k]=n[k]));save();render()};
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 load();render();setTimeout(fit,50);
 </script></body></html>
